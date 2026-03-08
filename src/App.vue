@@ -111,8 +111,8 @@ const initPhotos = () => {
   for (let i = 0; i < photoDate.length; i++) {
     const date = photoDate[i];
     photoList.push({
-      cartoon: `/src/assets/photos/ghibli/${date}.png`,
-      original: `/src/assets/photos/original/${date}.png`,
+      cartoon: `./assets/photos/ghibli/${date}.png`,
+      original: `./assets/photos/original/${date}.png`,
       showOriginal: false
     });
   }
