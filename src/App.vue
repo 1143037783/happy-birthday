@@ -262,8 +262,11 @@ const togglePlay = () => {
 const nextSlide = () => {
   currentSlide.value++;
   // 处理环形逻辑
-  if (currentSlide.value > photos.value.length) {
-    currentSlide.value = 1;
+  if (currentSlide.value > photos.value.length + 1) {
+    // 当滑动到第一张图片的副本时，重置为1
+    setTimeout(() => {
+      currentSlide.value = 1;
+    }, 500); // 等待动画结束后再重置
   }
   // 重置计时器，开始新图片的动画
   startPhotoAnimation();
@@ -272,8 +275,11 @@ const nextSlide = () => {
 const prevSlide = () => {
   currentSlide.value--;
   // 处理环形逻辑
-  if (currentSlide.value < 1) {
-    currentSlide.value = photos.value.length;
+  if (currentSlide.value < 0) {
+    // 当滑动到最后一张图片的副本时，重置为photos.length
+    setTimeout(() => {
+      currentSlide.value = photos.value.length;
+    }, 500); // 等待动画结束后再重置
   }
   // 重置计时器，开始新图片的动画
   startPhotoAnimation();
