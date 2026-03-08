@@ -51,10 +51,6 @@
               </div>
             </div>
           </div>
-          <div class="carousel-controls">
-            <button @click="prevSlide" class="control-btn">‹</button>
-            <button @click="nextSlide" class="control-btn">›</button>
-          </div>
         </div>
         <div class="carousel-indicators">
           <div class="indicator-text">
@@ -154,15 +150,11 @@ onMounted(() => {
   // 随机选择音乐
   selectRandomMusic();
   
-  // 页面加载后自动播放音乐（如果浏览器允许）
+  // 页面加载后设置音频事件监听器
   if (audio.value) {
     audio.value.addEventListener('play', handlePlay);
     audio.value.addEventListener('pause', handlePause);
     audio.value.addEventListener('ended', handleEnded);
-    
-    audio.value.play().catch(error => {
-      console.log('自动播放被阻止:', error);
-    });
   }
   
   // 启动照片动画
