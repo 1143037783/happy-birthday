@@ -19,47 +19,50 @@
       </div>
       
       <!-- 照片轮播图 -->
-      <div 
-        class="carousel-container"
-        @touchstart="touchStart"
-        @touchmove="touchMove"
-        @touchend="touchEnd"
-      >
-        <div class="carousel" :style="{ transform: `translateX(-${currentSlide * 100}%)` }">
-          <div 
-            class="carousel-slide" 
-            v-for="(photo, index) in photos" 
-            :key="index"
-            :style="{
-              boxShadow: `0 10px ${30 + audioLevel * 40}px ${10 + audioLevel * 20}px rgba(0, 0, 0, ${0.2 + audioLevel * 0.3})`
-            }"
-          >
-            <div class="photo-wrapper">
-              <img 
-                :src="photo.cartoon" 
-                :alt="`Cartoon photo ${index + 1}`" 
-                class="cartoon-photo"
-              />
-              <img 
-                :src="photo.original" 
-                :alt="`Original photo ${index + 1}`" 
-                class="original-photo"
-              />
+      <div class="carousel-wrapper">
+        <div 
+          class="carousel-container"
+          @touchstart="touchStart"
+          @touchmove="touchMove"
+          @touchend="touchEnd"
+        >
+          <div class="carousel" :style="{ transform: `translateX(calc(-${currentSlide * 90}% - ${currentSlide * 10}px))` }">
+            <div 
+              class="carousel-slide" 
+              v-for="(photo, index) in photos" 
+              :key="index"
+              :style="{
+                boxShadow: `0 10px ${30 + audioLevel * 40}px ${10 + audioLevel * 20}px rgba(0, 0, 0, ${0.2 + audioLevel * 0.3})`
+              }"
+            >
+              <div class="photo-wrapper">
+                <img 
+                  :src="photo.cartoon" 
+                  :alt="`Cartoon photo ${index + 1}`" 
+                  class="cartoon-photo"
+                  :class="{ 'hidden': photo.showOriginal }"
+                />
+                <img 
+                  :src="photo.original" 
+                  :alt="`Original photo ${index + 1}`" 
+                  class="original-photo"
+                  :class="{ 'visible': photo.showOriginal }"
+                />
+              </div>
             </div>
           </div>
-        </div>
-        <div class="carousel-controls">
-          <button @click="prevSlide" class="control-btn">‹</button>
-          <button @click="nextSlide" class="control-btn">›</button>
+          <div class="carousel-controls">
+            <button @click="prevSlide" class="control-btn">‹</button>
+            <button @click="nextSlide" class="control-btn">›</button>
+          </div>
         </div>
         <div class="carousel-indicators">
-          <span 
-            v-for="(photo, index) in photos" 
-            :key="index"
-            class="indicator"
-            :class="{ active: index === currentSlide }"
-            @click="goToSlide(index)"
-          ></span>
+          <div class="indicator-text">
+            {{ currentSlide + 1 }}/{{ photos.length }}
+          </div>
+          <div class="photo-date">
+            {{ formatDate(photoDate[currentSlide]) }}
+          </div>
         </div>
       </div>
       
@@ -88,21 +91,75 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 
-// 照片数据 - 后续替换为实际的照片
-const photos = ref([
-  {
-    cartoon: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Studio%20Ghibli%20style%20cartoon%20of%20a%20happy%20girl%20smiling&image_size=square',
-    original: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=photo%20of%20a%20happy%20girl%20smiling&image_size=square'
-  },
-  {
-    cartoon: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Studio%20Ghibli%20style%20cartoon%20of%20a%20girl%20laughing&image_size=square',
-    original: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=photo%20of%20a%20girl%20laughing&image_size=square'
-  },
-  {
-    cartoon: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=Studio%20Ghibli%20style%20cartoon%20of%20a%20cheerful%20girl&image_size=square',
-    original: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=photo%20of%20a%20cheerful%20girl&image_size=square'
+// 照片数据 - 从文件夹中自动读取图片
+const photos = ref([]);
+const photoDate = [20230314,20230323,20230820,20231002,20240203,20240218,20250824,20251012,20260223];
+
+// 格式化日期函数
+const formatDate = (dateStr) => {
+  const year = dateStr.toString().substring(0, 4);
+  const month = dateStr.toString().substring(4, 6);
+  const day = dateStr.toString().substring(6, 8);
+  return `${year}年${month}月${day}日`;
+};
+
+// 初始化照片数据
+const initPhotos = () => {
+  // 假设图片按照年月日命名，例如：20210101.png
+  const photoList = [];
+  
+  for (let i = 0; i < photoDate.length; i++) {
+    const date = photoDate[i];
+    photoList.push({
+      cartoon: `/src/assets/photos/ghibli/${date}.png`,
+      original: `/src/assets/photos/original/${date}.png`,
+      showOriginal: false
+    });
   }
-]);
+  
+  photos.value = photoList;
+};
+
+// 初始化照片数据
+initPhotos();
+
+// 自动切换照片显示状态
+const startPhotoAnimation = () => {
+  photos.value.forEach((photo, index) => {
+    setTimeout(() => {
+      // 首先显示卡通照片3秒
+      photo.showOriginal = false;
+      // 3秒后切换到原照片
+      setTimeout(() => {
+        photo.showOriginal = true;
+        // 再3秒后恢复显示卡通照片
+        setTimeout(() => {
+          photo.showOriginal = false;
+        }, 3000);
+      }, 3000);
+    }, index * 6000); // 每张照片间隔6秒（3秒卡通 + 3秒原图）
+  });
+  
+  // 循环播放
+  setTimeout(startPhotoAnimation, photos.value.length * 6000);
+};
+
+// 启动照片动画
+onMounted(() => {
+  // 页面加载后自动播放音乐（如果浏览器允许）
+  if (audio.value) {
+    audio.value.addEventListener('play', handlePlay);
+    audio.value.addEventListener('pause', handlePause);
+    audio.value.addEventListener('ended', handleEnded);
+    
+    audio.value.play().catch(error => {
+      console.log('自动播放被阻止:', error);
+    });
+  }
+  
+  // 启动照片动画
+  startPhotoAnimation();
+});
 
 const audio = ref(null);
 const isPlaying = ref(false);
@@ -253,16 +310,25 @@ onUnmounted(() => {
 <style scoped>
 .app {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
+  overflow-x: auto;
   padding: 2rem 0;
+  text-align: center;
+}
+
+.app h1 {
+  margin-bottom: 2rem;
+  font-size: 3rem;
+  color: #ff6b6b;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* 音乐和照片结合的容器 */
 .music-photo-container {
   position: relative;
-  width: 90%;
-  max-width: 900px;
+  width: 100%;
+  max-width: 1280px;
   margin: 3rem auto;
   padding: 2rem;
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
@@ -272,6 +338,7 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
+  box-sizing: border-box;
 }
 
 /* 黑胶唱片播放器样式 */
@@ -348,37 +415,53 @@ onUnmounted(() => {
   border-radius: 1px;
 }
 
+.carousel-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 30px;
+}
+
 /* 轮播图样式 */
 .carousel-container {
   position: relative;
   width: 100%;
-  max-width: 600px;
+  max-width: 1200px;
   overflow: hidden;
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  margin-top: 30px;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
   touch-action: pan-y;
+  padding: 10px 0;
 }
 
 .carousel {
   display: flex;
   transition: transform 0.5s ease-in-out;
+  align-items: center;
 }
 
 .carousel-slide {
-  flex: 0 0 100%;
+  flex: 0 0 90%;
   position: relative;
   cursor: pointer;
+  margin: 0 5px;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.5s ease-in-out;
+  z-index: 1;
 }
+
+
 
 .photo-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 75%; /* 4:3 比例 */
+  padding-top: 133.33%; /* 3:4 比例 */
 }
 
 .photo-wrapper img {
@@ -391,27 +474,22 @@ onUnmounted(() => {
   transition: opacity 0.5s ease;
 }
 
+.photo-wrapper .cartoon-photo {
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
 .photo-wrapper .original-photo {
   opacity: 0;
+  transition: opacity 0.5s ease;
 }
 
-/* 触摸设备上的悬停效果 */
-@media (hover: hover) {
-  .carousel-slide:hover .cartoon-photo {
-    opacity: 0;
-  }
-  
-  .carousel-slide:hover .original-photo {
-    opacity: 1;
-  }
-}
-
-/* 触摸设备上的点击效果 */
-.carousel-slide:active .cartoon-photo {
+/* 自动切换效果 */
+.photo-wrapper .cartoon-photo.hidden {
   opacity: 0;
 }
 
-.carousel-slide:active .original-photo {
+.photo-wrapper .original-photo.visible {
   opacity: 1;
 }
 
@@ -456,28 +534,31 @@ onUnmounted(() => {
 
 /* 轮播指示器 */
 .carousel-indicators {
-  position: absolute;
-  bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  margin-top: 15px;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
   z-index: 10;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 10px 20px;
+  border-radius: 20px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  -webkit-tap-highlight-color: transparent;
+.indicator-text {
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.indicator.active {
-  background: rgba(255, 107, 107, 1);
-  transform: scale(1.2);
+.photo-date {
+  color: #ff6b6b;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 /* 音乐信息和控制 */
