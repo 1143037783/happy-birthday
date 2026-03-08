@@ -26,15 +26,15 @@
           @touchmove="touchMove"
           @touchend="touchEnd"
         >
-          <div class="carousel" :style="{ transform: `translateX(calc(-${currentSlide * 90}% - ${currentSlide * 10}px))` }">
-            <div 
-              class="carousel-slide" 
-              v-for="(photo, index) in photos" 
-              :key="index"
-              :style="{
-                boxShadow: `0 10px ${30 + audioLevel * 40}px ${10 + audioLevel * 20}px rgba(0, 0, 0, ${0.2 + audioLevel * 0.3})`
-              }"
-            >
+          <div class="carousel" :style="{ transform: `translateX(calc(-${currentSlide * 100}%))` }">
+          <div 
+            class="carousel-slide" 
+            v-for="(photo, index) in photos" 
+            :key="index"
+            :style="{
+              boxShadow: `0 10px ${30 + audioLevel * 40}px ${10 + audioLevel * 20}px rgba(0, 0, 0, ${0.2 + audioLevel * 0.3})`
+            }"
+          >
               <div class="photo-wrapper">
                 <img 
                   :src="photo.cartoon" 
@@ -69,7 +69,7 @@
       <!-- 音乐信息和控制 -->
       <div class="player-info">
         <h3>宫崎骏音乐</h3>
-        <p>《龙猫》主题曲</p>
+        <p>{{ currentMusic.title }}</p>
         <div class="player-controls">
           <button 
             @click="togglePlay" 
@@ -79,9 +79,9 @@
             }"
           >{{ isPlaying ? '暂停' : '播放' }}</button>
           <audio ref="audio" @play="handlePlay" @pause="handlePause" @ended="handleEnded">
-            <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+            <source :src="currentMusic.src" type="audio/mpeg">
             您的浏览器不支持音频播放。
-          </audio>
+           </audio>
         </div>
       </div>
     </div>
@@ -111,8 +111,8 @@ const initPhotos = () => {
   for (let i = 0; i < photoDate.length; i++) {
     const date = photoDate[i];
     photoList.push({
-      cartoon: `./assets/photos/ghibli/${date}.png`,
-      original: `./assets/photos/original/${date}.png`,
+      cartoon: new URL(`./assets/photos/ghibli/${date}.png`, import.meta.url).href,
+      original: new URL(`./assets/photos/original/${date}.png`, import.meta.url).href,
       showOriginal: false
     });
   }
@@ -125,27 +125,35 @@ initPhotos();
 
 // 自动切换照片显示状态
 const startPhotoAnimation = () => {
-  photos.value.forEach((photo, index) => {
-    setTimeout(() => {
-      // 首先显示卡通照片3秒
-      photo.showOriginal = false;
-      // 3秒后切换到原照片
-      setTimeout(() => {
-        photo.showOriginal = true;
-        // 再3秒后恢复显示卡通照片
-        setTimeout(() => {
-          photo.showOriginal = false;
-        }, 3000);
-      }, 3000);
-    }, index * 6000); // 每张照片间隔6秒（3秒卡通 + 3秒原图）
-  });
+  // 清除之前的计时器
+  if (animationTimer) {
+    clearTimeout(animationTimer);
+  }
   
-  // 循环播放
-  setTimeout(startPhotoAnimation, photos.value.length * 6000);
+  // 只对当前显示的照片进行变换
+  const currentPhoto = photos.value[currentSlide.value];
+  if (currentPhoto) {
+    // 首先显示卡通照片3秒
+    currentPhoto.showOriginal = false;
+    // 3秒后切换到原照片
+    setTimeout(() => {
+      currentPhoto.showOriginal = true;
+      // 再3秒后恢复显示卡通照片
+      setTimeout(() => {
+        currentPhoto.showOriginal = false;
+      }, 3000);
+    }, 3000);
+  }
+  
+  // 循环播放，每6秒检查一次当前照片
+  animationTimer = setTimeout(startPhotoAnimation, 6000);
 };
 
 // 启动照片动画
 onMounted(() => {
+  // 随机选择音乐
+  selectRandomMusic();
+  
   // 页面加载后自动播放音乐（如果浏览器允许）
   if (audio.value) {
     audio.value.addEventListener('play', handlePlay);
@@ -167,6 +175,32 @@ const currentSlide = ref(0);
 const touchStartX = ref(0);
 const touchEndX = ref(0);
 const audioLevel = ref(0);
+let animationTimer = null;
+
+// 音乐列表
+const musicList = [
+  {
+    title: '天空之城',
+    src: new URL('./assets/music/天空之城.mp3', import.meta.url).href
+  },
+  {
+    title: 'Always With Me',
+    src: new URL('./assets/music/Always With Me.mp3', import.meta.url).href
+  },
+  {
+    title: 'The Wind Forest',
+    src: new URL('./assets/music/The Wind Forest.mp3', import.meta.url).href
+  }
+];
+
+// 当前播放的音乐
+const currentMusic = ref({});
+
+// 随机选择音乐
+const selectRandomMusic = () => {
+  const randomIndex = Math.floor(Math.random() * musicList.length);
+  currentMusic.value = musicList[randomIndex];
+};
 
 // 音频分析相关
 let audioContext = null;
@@ -188,14 +222,20 @@ const togglePlay = () => {
 
 const nextSlide = () => {
   currentSlide.value = (currentSlide.value + 1) % photos.value.length;
+  // 重置计时器，开始新图片的动画
+  startPhotoAnimation();
 };
 
 const prevSlide = () => {
   currentSlide.value = (currentSlide.value - 1 + photos.value.length) % photos.value.length;
+  // 重置计时器，开始新图片的动画
+  startPhotoAnimation();
 };
 
 const goToSlide = (index) => {
   currentSlide.value = index;
+  // 重置计时器，开始新图片的动画
+  startPhotoAnimation();
 };
 
 // 触摸事件处理
@@ -310,7 +350,7 @@ onUnmounted(() => {
 <style scoped>
 .app {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   overflow-x: auto;
   padding: 2rem 0;
@@ -328,7 +368,7 @@ onUnmounted(() => {
 .music-photo-container {
   position: relative;
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 3rem auto;
   padding: 2rem;
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
@@ -337,7 +377,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem;
   box-sizing: border-box;
 }
 
@@ -417,17 +457,18 @@ onUnmounted(() => {
 
 .carousel-wrapper {
   width: 100%;
+  max-width: 1400px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 30px;
+  margin: 30px auto 0;
 }
 
 /* 轮播图样式 */
 .carousel-container {
   position: relative;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   overflow: hidden;
   border-radius: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -446,10 +487,10 @@ onUnmounted(() => {
 }
 
 .carousel-slide {
-  flex: 0 0 90%;
+  flex: 0 0 100%;
   position: relative;
   cursor: pointer;
-  margin: 0 5px;
+  margin: 0;
   border-radius: 10px;
   overflow: hidden;
   transition: all 0.5s ease-in-out;
@@ -567,7 +608,7 @@ onUnmounted(() => {
   max-width: 600px;
   color: #fff;
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
 }
 
 .player-info h3 {
