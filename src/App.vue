@@ -26,9 +26,10 @@
           @touchmove="touchMove"
           @touchend="touchEnd"
         >
-          <div class="carousel" :style="{ transform: `translateX(calc(-${currentSlide * 100}%))` }">
-          <!-- 最后一张图片的副本，用于环形效果 -->
+          <div class="carousel" :style="{ transform: `translateX(calc(-${currentSlide * 100}%))`, transition: isTransitioning ? 'transform 0.5s ease-in-out' : 'none' }">
+          <!-- 额外的最后一张图片（用于循环） -->
           <div 
+            v-if="photos.length > 0" 
             class="carousel-slide"
             :style="{
               boxShadow: `0 10px ${30 + audioLevel * 40}px ${10 + audioLevel * 20}px rgba(0, 0, 0, ${0.2 + audioLevel * 0.3})`
@@ -37,15 +38,13 @@
               <div class="photo-wrapper">
                 <img 
                   :src="photos[photos.length - 1].cartoon" 
-                  :alt="`Cartoon photo ${photos.length}`" 
+                  :alt="`Cartoon photo ${photos.length}`"
                   class="cartoon-photo"
-                  :class="{ 'hidden': photos[photos.length - 1].showOriginal }"
                 />
                 <img 
                   :src="photos[photos.length - 1].original" 
-                  :alt="`Original photo ${photos.length}`" 
+                  :alt="`Original photo ${photos.length}`"
                   class="original-photo"
-                  :class="{ 'visible': photos[photos.length - 1].showOriginal }"
                 />
               </div>
             </div>
@@ -73,8 +72,9 @@
                 />
               </div>
             </div>
-          <!-- 第一张图片的副本，用于环形效果 -->
+          <!-- 额外的第一张图片（用于循环） -->
           <div 
+            v-if="photos.length > 0" 
             class="carousel-slide"
             :style="{
               boxShadow: `0 10px ${30 + audioLevel * 40}px ${10 + audioLevel * 20}px rgba(0, 0, 0, ${0.2 + audioLevel * 0.3})`
@@ -83,15 +83,13 @@
               <div class="photo-wrapper">
                 <img 
                   :src="photos[0].cartoon" 
-                  :alt="`Cartoon photo 1`" 
+                  :alt="`Cartoon photo 1`"
                   class="cartoon-photo"
-                  :class="{ 'hidden': photos[0].showOriginal }"
                 />
                 <img 
                   :src="photos[0].original" 
-                  :alt="`Original photo 1`" 
+                  :alt="`Original photo 1`"
                   class="original-photo"
-                  :class="{ 'visible': photos[0].showOriginal }"
                 />
               </div>
             </div>
@@ -99,10 +97,10 @@
         </div>
         <div class="carousel-indicators">
           <div class="indicator-text">
-            {{ currentSlide }}/{{ photos.length }}
+            {{ (currentSlide - 1) % photos.length + 1 }}/{{ photos.length }}
           </div>
           <div class="photo-date">
-            {{ formatDate(photoDate[currentSlide - 1]) }}
+            {{ formatDate(photoDate[(currentSlide - 1) % photos.length]) }}
           </div>
         </div>
       </div>
@@ -173,7 +171,11 @@ const startPhotoAnimation = () => {
   
   // 只对当前显示的照片进行变换
   // 调整索引，因为currentSlide从1开始，而photos数组从0开始
-  const photoIndex = (currentSlide.value - 1) % photos.value.length;
+  let photoIndex = (currentSlide.value - 1) % photos.value.length;
+  // 处理边界情况
+  if (photoIndex < 0) {
+    photoIndex = photos.value.length - 1;
+  }
   const currentPhoto = photos.value[photoIndex];
   if (currentPhoto) {
     // 首先显示卡通照片3秒
@@ -214,6 +216,7 @@ const currentSlide = ref(1);
 const touchStartX = ref(0);
 const touchEndX = ref(0);
 const audioLevel = ref(0);
+const isTransitioning = ref(true);
 let animationTimer = null;
 
 // 音乐列表
@@ -260,27 +263,43 @@ const togglePlay = () => {
 };
 
 const nextSlide = () => {
+  isTransitioning.value = true;
   currentSlide.value++;
+  
   // 处理环形逻辑
-  if (currentSlide.value > photos.value.length + 1) {
-    // 当滑动到第一张图片的副本时，重置为1
+  if (currentSlide.value > photos.value.length) {
+    // 当滑动到最后一张副本时，先完成动画，然后瞬间切换到第一张实际图片
     setTimeout(() => {
+      isTransitioning.value = false;
       currentSlide.value = 1;
-    }, 500); // 等待动画结束后再重置
+      // 等待DOM更新后再恢复过渡效果
+      setTimeout(() => {
+        isTransitioning.value = true;
+      }, 50);
+    }, 500);
   }
+  
   // 重置计时器，开始新图片的动画
   startPhotoAnimation();
 };
 
 const prevSlide = () => {
-  currentSlide.value--;
+  isTransitioning.value = true;
+  
   // 处理环形逻辑
-  if (currentSlide.value < 0) {
-    // 当滑动到最后一张图片的副本时，重置为photos.length
+  if (currentSlide.value === 1) {
+    // 当滑动到第一张实际图片时，先瞬间切换到最后一张副本，然后开始动画
+    isTransitioning.value = false;
+    currentSlide.value = photos.value.length + 1;
+    // 等待DOM更新后再开始动画
     setTimeout(() => {
-      currentSlide.value = photos.value.length;
-    }, 500); // 等待动画结束后再重置
+      isTransitioning.value = true;
+      currentSlide.value--;
+    }, 50);
+  } else {
+    currentSlide.value--;
   }
+  
   // 重置计时器，开始新图片的动画
   startPhotoAnimation();
 };
