@@ -97,10 +97,10 @@
         </div>
         <div class="carousel-indicators">
           <div class="indicator-text">
-            {{ (currentSlide - 1) % photos.length + 1 }}/{{ photos.length }}
+            {{ ((currentSlide - 1) % photos.length + photos.length) % photos.length + 1 }}/{{ photos.length }}
           </div>
           <div class="photo-date">
-            {{ formatDate(photoDate[(currentSlide - 1) % photos.length]) }}
+            {{ formatDate(photoDate[((currentSlide - 1) % photos.length + photos.length) % photos.length]) }}
           </div>
         </div>
       </div>
