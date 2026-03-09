@@ -67,7 +67,7 @@
                 <template v-if="photo.isVideo">
                   <!-- 视频 -->
                   <video 
-                    ref="videoRefs" 
+                    :ref="el => videoRefs[index] = el" 
                     :src="photo.video" 
                     :alt="`Video ${index + 1}`" 
                     class="original-video"
@@ -198,21 +198,27 @@ const initPhotos = () => {
 // 初始化照片数据
 initPhotos();
 
+// 视频计时器
+const videoTimers = ref({});
+
 // 处理视频结束事件
 const handleVideoEnd = (index) => {
+  // 清除之前的计时器
+  if (videoTimers.value[index]) {
+    clearTimeout(videoTimers.value[index]);
+  }
+  
   // 视频播放完成后，显示原图3秒
   const currentPhoto = photos.value[index];
   if (currentPhoto) {
-    // 保存视频状态
-    const video = videoRefs.value[index];
-    
     // 显示原图
     currentPhoto.showOriginImage = true;
     
     // 3秒后重新播放视频
-    setTimeout(() => {
+    videoTimers.value[index] = setTimeout(() => {
       // 隐藏原图，显示视频
       currentPhoto.showOriginImage = false;
+      const video = videoRefs.value[index];
       if (video) {
         video.currentTime = 0;
         video.play().catch(error => {
@@ -259,7 +265,10 @@ const startPhotoAnimation = () => {
   }
   
   // 循环播放，每6秒检查一次当前照片
-  animationTimer = setTimeout(startPhotoAnimation, 6000);
+  // 只有当当前不是视频时才启动循环
+  if (!currentPhoto || !currentPhoto.isVideo) {
+    animationTimer = setTimeout(startPhotoAnimation, 6000);
+  }
 };
 
 
@@ -281,7 +290,7 @@ onMounted(() => {
 });
 
 const audio = ref(null);
-const videoRefs = ref([]);
+const videoRefs = ref({});
 const isPlaying = ref(false);
 const currentSlide = ref(1);
 const touchStartX = ref(0);
@@ -335,6 +344,13 @@ const togglePlay = () => {
 
 const nextSlide = () => {
   isTransitioning.value = true;
+  
+  // 清除所有视频计时器
+  Object.values(videoTimers.value).forEach(timer => {
+    clearTimeout(timer);
+  });
+  videoTimers.value = {};
+  
   currentSlide.value++;
   
   // 处理环形逻辑
@@ -357,6 +373,12 @@ const nextSlide = () => {
 const prevSlide = () => {
   isTransitioning.value = true;
   
+  // 清除所有视频计时器
+  Object.values(videoTimers.value).forEach(timer => {
+    clearTimeout(timer);
+  });
+  videoTimers.value = {};
+  
   // 处理环形逻辑
   if (currentSlide.value === 1) {
     // 当滑动到第一张实际图片时，先瞬间切换到最后一张副本，然后开始动画
@@ -376,6 +398,12 @@ const prevSlide = () => {
 };
 
 const goToSlide = (index) => {
+  // 清除所有视频计时器
+  Object.values(videoTimers.value).forEach(timer => {
+    clearTimeout(timer);
+  });
+  videoTimers.value = {};
+  
   // 调整索引，因为currentSlide从1开始
   currentSlide.value = index + 1;
   // 重置计时器，开始新图片的动画
