@@ -64,12 +64,36 @@
                   class="cartoon-photo"
                   :class="{ 'hidden': photo.showOriginal }"
                 />
-                <img 
-                  :src="photo.original" 
-                  :alt="`Original photo ${index + 1}`" 
-                  class="original-photo"
-                  :class="{ 'visible': photo.showOriginal }"
-                />
+                <template v-if="photo.isVideo">
+                  <!-- 视频 -->
+                  <video 
+                    ref="videoRefs" 
+                    :src="photo.video" 
+                    :alt="`Video ${index + 1}`" 
+                    class="original-video"
+                    :class="{ 'visible': photo.showOriginal && !photo.showOriginImage }"
+                    autoplay
+                    muted
+                    playsinline
+                    preload="auto"
+                    @ended="handleVideoEnd(index)"
+                  />
+                  <!-- 原图 -->
+                  <img 
+                    :src="photo.original" 
+                    :alt="`Original photo ${index + 1}`" 
+                    class="original-photo"
+                    :class="{ 'visible': photo.showOriginal && photo.showOriginImage }"
+                  />
+                </template>
+                <template v-else>
+                  <img 
+                    :src="photo.original" 
+                    :alt="`Original photo ${index + 1}`" 
+                    class="original-photo"
+                    :class="{ 'visible': photo.showOriginal }"
+                  />
+                </template>
               </div>
             </div>
           <!-- 额外的第一张图片（用于循环） -->
@@ -100,7 +124,7 @@
             {{ ((currentSlide - 1) % photos.length + photos.length) % photos.length + 1 }}/{{ photos.length }}
           </div>
           <div class="photo-date">
-            {{ formatDate(photoDate[((currentSlide - 1) % photos.length + photos.length) % photos.length]) }}
+            {{ ((currentSlide - 1) % photos.length + photos.length) % photos.length === 8 ? '天空之城视频' : formatDate(photoDate[((currentSlide - 1) % photos.length + photos.length) % photos.length]) }}
           </div>
         </div>
       </div>
@@ -149,11 +173,23 @@ const initPhotos = () => {
   
   for (let i = 0; i < photoDate.length; i++) {
     const date = photoDate[i];
-    photoList.push({
-      cartoon: new URL(`./assets/photos/ghibli/${date}.png`, import.meta.url).href,
-      original: new URL(`./assets/photos/original/${date}.png`, import.meta.url).href,
-      showOriginal: false
-    });
+    // 替换第9张为视频
+    if (i === 8) {
+      photoList.push({
+        cartoon: new URL(`./assets/photos/ghibli/${date}.png`, import.meta.url).href,
+        original: new URL(`./assets/photos/original/${date}.png`, import.meta.url).href,
+        video: new URL(`./assets/videos/天空之城.mp4`, import.meta.url).href,
+        showOriginal: false,
+        showOriginImage: false,
+        isVideo: true
+      });
+    } else {
+      photoList.push({
+        cartoon: new URL(`./assets/photos/ghibli/${date}.png`, import.meta.url).href,
+        original: new URL(`./assets/photos/original/${date}.png`, import.meta.url).href,
+        showOriginal: false
+      });
+    }
   }
   
   photos.value = photoList;
@@ -161,6 +197,31 @@ const initPhotos = () => {
 
 // 初始化照片数据
 initPhotos();
+
+// 处理视频结束事件
+const handleVideoEnd = (index) => {
+  // 视频播放完成后，显示原图3秒
+  const currentPhoto = photos.value[index];
+  if (currentPhoto) {
+    // 保存视频状态
+    const video = videoRefs.value[index];
+    
+    // 显示原图
+    currentPhoto.showOriginImage = true;
+    
+    // 3秒后重新播放视频
+    setTimeout(() => {
+      // 隐藏原图，显示视频
+      currentPhoto.showOriginImage = false;
+      if (video) {
+        video.currentTime = 0;
+        video.play().catch(error => {
+          console.log('视频播放被阻止:', error);
+        });
+      }
+    }, 3000);
+  }
+};
 
 // 自动切换照片显示状态
 const startPhotoAnimation = () => {
@@ -180,19 +241,28 @@ const startPhotoAnimation = () => {
   if (currentPhoto) {
     // 首先显示卡通照片3秒
     currentPhoto.showOriginal = false;
+    // 对于视频，确保显示视频而不是原图
+    if (currentPhoto.isVideo) {
+      currentPhoto.showOriginImage = false;
+    }
     // 3秒后切换到原照片
     setTimeout(() => {
       currentPhoto.showOriginal = true;
-      // 再3秒后恢复显示卡通照片
-      setTimeout(() => {
-        currentPhoto.showOriginal = false;
-      }, 3000);
+      // 非视频内容再3秒后恢复显示卡通照片
+      if (!currentPhoto.isVideo) {
+        setTimeout(() => {
+          currentPhoto.showOriginal = false;
+        }, 3000);
+      }
+      // 视频内容由视频结束事件处理
     }, 3000);
   }
   
   // 循环播放，每6秒检查一次当前照片
   animationTimer = setTimeout(startPhotoAnimation, 6000);
 };
+
+
 
 // 启动照片动画
 onMounted(() => {
@@ -211,6 +281,7 @@ onMounted(() => {
 });
 
 const audio = ref(null);
+const videoRefs = ref([]);
 const isPlaying = ref(false);
 const currentSlide = ref(1);
 const touchStartX = ref(0);
@@ -426,7 +497,6 @@ onUnmounted(() => {
   max-width: 1440px;
   margin: 0 auto;
   overflow-x: auto;
-  padding: 2rem 0;
   text-align: center;
 }
 
@@ -443,7 +513,6 @@ onUnmounted(() => {
   width: 100%;
   max-width: 1440px;
   margin: 3rem auto;
-  padding: 2rem;
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   border-radius: 20px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
@@ -534,7 +603,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 30px auto 0;
+  margin: 10px auto 0;
 }
 
 /* 轮播图样式 */
@@ -578,7 +647,8 @@ onUnmounted(() => {
   padding-top: 133.33%; /* 3:4 比例 */
 }
 
-.photo-wrapper img {
+.photo-wrapper img,
+.photo-wrapper video {
   position: absolute;
   top: 0;
   left: 0;
@@ -593,7 +663,8 @@ onUnmounted(() => {
   transition: opacity 0.5s ease;
 }
 
-.photo-wrapper .original-photo {
+.photo-wrapper .original-photo,
+.photo-wrapper .original-video {
   opacity: 0;
   transition: opacity 0.5s ease;
 }
@@ -603,7 +674,8 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-.photo-wrapper .original-photo.visible {
+.photo-wrapper .original-photo.visible,
+.photo-wrapper .original-video.visible {
   opacity: 1;
 }
 
@@ -705,7 +777,7 @@ onUnmounted(() => {
 }
 
 .play-btn {
-  padding: 0.8rem 2rem;
+  padding: 0.8rem;
   background: #ff6b6b;
   color: white;
   border: none;
