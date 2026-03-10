@@ -171,14 +171,25 @@ const initPhotos = () => {
   // 假设图片按照年月日命名，例如：20210101.png
   const photoList = [];
   
+  // 视频和音乐对应关系
+  const videoMusicMap = [
+    { video: '天空之城.mp4', musicIndex: 0 },
+    { video: '千与千寻.mp4', musicIndex: 1 },
+    { video: '龙猫.mp4', musicIndex: 2 }
+  ];
+  
   for (let i = 0; i < photoDate.length; i++) {
     const date = photoDate[i];
-    // 替换第9张为视频
+    // 只在第9张位置添加视频（作为彩蛋）
     if (i === 8) {
+      // 随机选择一个视频和对应的音乐
+      const randomIndex = Math.floor(Math.random() * videoMusicMap.length);
+      const videoMusic = videoMusicMap[randomIndex];
       photoList.push({
         cartoon: new URL(`./assets/photos/ghibli/${date}.png`, import.meta.url).href,
         original: new URL(`./assets/photos/original/${date}.png`, import.meta.url).href,
-        video: new URL(`./assets/videos/天空之城.mp4`, import.meta.url).href,
+        video: new URL(`./assets/videos/${videoMusic.video}`, import.meta.url).href,
+        musicIndex: videoMusic.musicIndex,
         showOriginal: false,
         showOriginImage: false,
         isVideo: true
@@ -250,6 +261,18 @@ const startPhotoAnimation = () => {
     // 对于视频，确保显示视频而不是原图
     if (currentPhoto.isVideo) {
       currentPhoto.showOriginImage = false;
+      // 播放对应的音乐
+      if (currentPhoto.musicIndex !== undefined && musicList[currentPhoto.musicIndex]) {
+        currentMusic.value = musicList[currentPhoto.musicIndex];
+        // 尝试播放音乐
+        if (audio.value) {
+          audio.value.pause();
+          audio.value.src = currentMusic.value.src;
+          audio.value.play().catch(error => {
+            console.log('音乐播放被阻止:', error);
+          });
+        }
+      }
     }
     // 3秒后切换到原照片
     setTimeout(() => {
@@ -283,6 +306,10 @@ onMounted(() => {
     audio.value.addEventListener('play', handlePlay);
     audio.value.addEventListener('pause', handlePause);
     audio.value.addEventListener('ended', handleEnded);
+    // 设置初始音乐源
+    if (currentMusic.value.src) {
+      audio.value.src = currentMusic.value.src;
+    }
   }
   
   // 启动照片动画
@@ -306,12 +333,12 @@ const musicList = [
     src: new URL('./assets/music/天空之城.mp3', import.meta.url).href
   },
   {
-    title: 'Always With Me',
-    src: new URL('./assets/music/Always With Me.mp3', import.meta.url).href
+    title: '千与千寻',
+    src: new URL('./assets/music/千与千寻.mp3', import.meta.url).href
   },
   {
-    title: 'The Wind Forest',
-    src: new URL('./assets/music/The Wind Forest.mp3', import.meta.url).href
+    title: '龙猫',
+    src: new URL('./assets/music/龙猫.mp3', import.meta.url).href
   }
 ];
 
@@ -335,6 +362,10 @@ const togglePlay = () => {
     if (isPlaying.value) {
       audio.value.pause();
     } else {
+      // 确保使用当前显示的音乐
+      if (currentMusic.value.src) {
+        audio.value.src = currentMusic.value.src;
+      }
       audio.value.play().catch(error => {
         console.log('播放被阻止:', error);
       });
