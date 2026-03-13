@@ -20,7 +20,7 @@
       
       <!-- 祝福文字 -->
       <div class="blessing-text">
-        生活或许偶尔忙碌，但愿你总能像在森林里遇见龙猫一样，在平凡的日子里撞见不期而遇的小惊喜。生日快乐，愿你每天都有好心情。
+        {{ getBlessingText() }}
       </div>
       
       <!-- 照片轮播图 -->
@@ -279,16 +279,7 @@ const startPhotoAnimation = () => {
     // 对于视频，确保显示视频而不是原图
     if (currentPhoto.isVideo) {
       currentPhoto.showOriginImage = false;
-      // 播放对应的音乐
-      if (currentPhoto.musicIndex !== undefined && musicList[currentPhoto.musicIndex]) {
-        currentMusic.value = musicList[currentPhoto.musicIndex];
-        // 更新音频源，但不自动播放（等待用户点击播放按钮）
-        if (audio.value) {
-          audio.value.pause();
-          audio.value.src = currentMusic.value.src;
-          // 不调用 play()，等待用户交互
-        }
-      }
+      // 视频本身是静音的，保持音乐播放不变
     }
     // 3秒后切换到原照片
     setTimeout(() => {
@@ -367,6 +358,21 @@ const musicList = [
 
 // 当前播放的音乐
 const currentMusic = ref({});
+
+// 根据音乐名称获取对应祝福文字
+const getBlessingText = () => {
+  const musicTitle = currentMusic.value.title;
+  switch (musicTitle) {
+    case '龙猫':
+      return '生活或许偶尔忙碌，但愿你总能像在森林里遇见龙猫一样，在平凡的日子里撞见不期而遇的小惊喜。生日快乐，愿你每天都有好心情。';
+    case '千与千寻':
+      return '这个世界很大，每个人都在向前走，愿你始终能按自己喜欢的方式生活。愿你所求皆如愿，所行化坦途，在自己的小世界里自在闪光。';
+    case '天空之城':
+      return '愿你有仰望星空的浪漫，也有脚踏实地的从容。在这个特别的日子里，祝你像云朵一样自由轻盈，去发现更多美好的风景。';
+    default:
+      return '生活或许偶尔忙碌，但愿你总能像在森林里遇见龙猫一样，在平凡的日子里撞见不期而遇的小惊喜。生日快乐，愿你每天都有好心情。';
+  }
+};
 
 // 随机选择音乐
 const selectRandomMusic = () => {
@@ -685,6 +691,9 @@ onUnmounted(() => {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(5px);
   transition: all 0.3s ease;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .blessing-text:hover {
