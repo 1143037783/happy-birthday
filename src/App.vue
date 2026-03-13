@@ -18,6 +18,11 @@
         </div>
       </div>
       
+      <!-- 祝福文字 -->
+      <div class="blessing-text">
+        生活或许偶尔忙碌，但愿你总能像在森林里遇见龙猫一样，在平凡的日子里撞见不期而遇的小惊喜。生日快乐，愿你每天都有好心情。
+      </div>
+      
       <!-- 照片轮播图 -->
       <div class="carousel-wrapper">
         <div 
@@ -124,7 +129,7 @@
             {{ ((currentSlide - 1) % photos.length + photos.length) % photos.length + 1 }}/{{ photos.length }}
           </div>
           <div class="photo-date">
-            {{ ((currentSlide - 1) % photos.length + photos.length) % photos.length === 8 ? '天空之城视频' : formatDate(photoDate[((currentSlide - 1) % photos.length + photos.length) % photos.length]) }}
+            {{ getPhotoDescription(((currentSlide - 1) % photos.length + photos.length) % photos.length) }}
           </div>
         </div>
       </div>
@@ -141,7 +146,7 @@
               boxShadow: `0 0 ${20 + audioLevel * 30}px ${5 + audioLevel * 15}px rgba(255, 107, 107, ${0.3 + audioLevel * 0.5})`
             }"
           >{{ isPlaying ? '暂停' : '播放' }}</button>
-          <audio ref="audio" @play="handlePlay" @pause="handlePause" @ended="handleEnded">
+          <audio ref="audio" @play="handlePlay" @pause="handlePause" @ended="handleEnded" preload="metadata" playsinline>
             <source :src="currentMusic.src" type="audio/mpeg">
             您的浏览器不支持音频播放。
            </audio>
@@ -166,8 +171,19 @@ const formatDate = (dateStr) => {
   return `${year}年${month}月${day}日`;
 };
 
+// 获取照片描述
+const getPhotoDescription = (index) => {
+  const photo = photos.value[index];
+  if (photo && photo.isVideo && photo.musicIndex !== undefined && musicList[photo.musicIndex]) {
+    return `${musicList[photo.musicIndex].title}视频`;
+  } else if (index < photoDate.length) {
+    return formatDate(photoDate[index]);
+  }
+  return '';
+};
+
 // 初始化照片数据
-const initPhotos = () => {
+const initPhotos = (musicIndex = null) => {
   // 假设图片按照年月日命名，例如：20210101.png
   const photoList = [];
   
@@ -182,9 +198,14 @@ const initPhotos = () => {
     const date = photoDate[i];
     // 只在第9张位置添加视频（作为彩蛋）
     if (i === 8) {
-      // 随机选择一个视频和对应的音乐
-      const randomIndex = Math.floor(Math.random() * videoMusicMap.length);
-      const videoMusic = videoMusicMap[randomIndex];
+      // 使用传入的音乐索引，如果未传入则随机选择
+      let videoMusic;
+      if (musicIndex !== null && musicIndex >= 0 && musicIndex < videoMusicMap.length) {
+        videoMusic = videoMusicMap.find(item => item.musicIndex === musicIndex) || videoMusicMap[0];
+      } else {
+        const randomIndex = Math.floor(Math.random() * videoMusicMap.length);
+        videoMusic = videoMusicMap[randomIndex];
+      }
       photoList.push({
         cartoon: new URL(`./assets/photos/ghibli/${date}.png`, import.meta.url).href,
         original: new URL(`./assets/photos/original/${date}.png`, import.meta.url).href,
@@ -205,9 +226,6 @@ const initPhotos = () => {
   
   photos.value = photoList;
 };
-
-// 初始化照片数据
-initPhotos();
 
 // 视频计时器
 const videoTimers = ref({});
@@ -264,13 +282,11 @@ const startPhotoAnimation = () => {
       // 播放对应的音乐
       if (currentPhoto.musicIndex !== undefined && musicList[currentPhoto.musicIndex]) {
         currentMusic.value = musicList[currentPhoto.musicIndex];
-        // 尝试播放音乐
+        // 更新音频源，但不自动播放（等待用户点击播放按钮）
         if (audio.value) {
           audio.value.pause();
           audio.value.src = currentMusic.value.src;
-          audio.value.play().catch(error => {
-            console.log('音乐播放被阻止:', error);
-          });
+          // 不调用 play()，等待用户交互
         }
       }
     }
@@ -296,12 +312,19 @@ const startPhotoAnimation = () => {
 
 
 
-// 启动照片动画
+// 设置音频事件监听器
 onMounted(() => {
   // 随机选择音乐
   selectRandomMusic();
   
-  // 页面加载后设置音频事件监听器
+  // 使用选择的音乐索引初始化照片数据
+  const selectedIndex = musicList.findIndex(music => music.title === currentMusic.value.title);
+  if (selectedIndex !== -1) {
+    initPhotos(selectedIndex);
+  } else {
+    initPhotos();
+  }
+  
   if (audio.value) {
     audio.value.addEventListener('play', handlePlay);
     audio.value.addEventListener('pause', handlePause);
@@ -520,18 +543,7 @@ const handleEnded = () => {
   isPlaying.value = false;
 };
 
-onMounted(() => {
-  // 页面加载后自动播放音乐（如果浏览器允许）
-  if (audio.value) {
-    audio.value.addEventListener('play', handlePlay);
-    audio.value.addEventListener('pause', handlePause);
-    audio.value.addEventListener('ended', handleEnded);
-    
-    audio.value.play().catch(error => {
-      console.log('自动播放被阻止:', error);
-    });
-  }
-});
+
 
 onUnmounted(() => {
   if (audio.value) {
@@ -654,6 +666,32 @@ onUnmounted(() => {
   height: 2px;
   background: #888;
   border-radius: 1px;
+}
+
+/* 祝福文字样式 */
+.blessing-text {
+  width: 100%;
+  max-width: 1200px;
+  margin: 1.5rem auto 0.3rem;
+  padding: 1.5rem 2rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  color: #fff;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  text-align: center;
+  font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.blessing-text:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 107, 107, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .carousel-wrapper {
@@ -903,6 +941,13 @@ onUnmounted(() => {
     margin-top: 20px;
   }
   
+  .blessing-text {
+    max-width: 95%;
+    padding: 1.2rem 1.5rem;
+    font-size: 1rem;
+    margin: 1rem auto 0.3rem;
+  }
+  
   .player-info h3 {
     font-size: 1.3rem;
   }
@@ -932,6 +977,13 @@ onUnmounted(() => {
 @media (max-width: 480px) {
   .music-photo-container {
     padding: 1rem;
+  }
+  
+  .blessing-text {
+    padding: 1rem 1.2rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0.8rem auto 0.3rem;
   }
   
   .vinyl-container {
@@ -981,6 +1033,8 @@ onUnmounted(() => {
     font-size: 0.8rem;
   }
 }
+
+
 
 /* 动画 */
 @keyframes rotate {
